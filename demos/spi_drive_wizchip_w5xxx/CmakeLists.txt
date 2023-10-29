@@ -1,0 +1,28 @@
+# Copyright (c) 2023 HPMicro
+# SPDX-License-Identifier: BSD-3-Clause
+
+cmake_minimum_required(VERSION 3.13)
+
+find_package(hpm-sdk REQUIRED HINTS $ENV{HPM_SDK_BASE})
+
+if(NOT DEFINED CONFIG_WIZNET)
+  set(CONFIG_WIZNET "w5500")
+endif()
+
+add_subdirectory(ioLibrary_Driver)
+
+project(spi_drive_wizchip_w5xxx)
+
+sdk_inc(src)
+sdk_inc(port/inc)
+sdk_inc(ioLibrary_Driver/Internet/DHCP)
+sdk_inc(ioLibrary_Driver/Application/loopback)
+
+sdk_app_src(src/main.c)
+sdk_app_src(port/src/port.c)
+sdk_app_src(ioLibrary_Driver/Internet/DHCP/dhcp.c)
+sdk_app_src(ioLibrary_Driver/Application/loopback/loopback.c)
+
+sdk_compile_definitions(-DCONFIG_WIZNET_DCHP=1)
+sdk_compile_definitions(-DCONFIG_TCP_CLIENT_IPERF=1)
+generate_ses_project()
