@@ -111,15 +111,16 @@ static hpm_stat_t hpm_spi_transfer_via_dma(SPI_Type *spi_ptr, DMA_Type *dma_ptr,
 {
     hpm_stat_t stat;
     uint32_t timeout_count = 0;
-
-    PORT_SPI_BASE->TRANSCTRL = ((PORT_SPI_BASE->TRANSCTRL & ~SPI_TRANSCTRL_RDTRANCNT_MASK) | SPI_TRANSCTRL_RDTRANCNT_SET(len - 1)) |
-                                ((PORT_SPI_BASE->TRANSCTRL & ~SPI_TRANSCTRL_WRTRANCNT_MASK) | SPI_TRANSCTRL_WRTRANCNT_SET(len - 1));
 #if defined(SPI_SOC_HAS_NEW_TRANS_COUNT) && (SPI_SOC_HAS_NEW_TRANS_COUNT == 1)
-    PORT_SPI_BASE->WR_TRANS_CNT = len - 1;
-    PORT_SPI_BASE->RD_TRANS_CNT = len - 1;
+    if (is_read) {
+        PORT_SPI_BASE->RD_TRANS_CNT = len - 1;
+    } else {
+        PORT_SPI_BASE->WR_TRANS_CNT = len - 1;
+    }
 #endif
     if (is_read) {
         /* set mode is readonly. and set the transfer len is 1*/
+        PORT_SPI_BASE->TRANSCTRL = ((PORT_SPI_BASE->TRANSCTRL & ~SPI_TRANSCTRL_RDTRANCNT_MASK) | SPI_TRANSCTRL_RDTRANCNT_SET(len - 1));
         PORT_SPI_BASE->TRANSCTRL = ((PORT_SPI_BASE->TRANSCTRL & ~SPI_TRANSCTRL_TRANSMODE_MASK) | SPI_TRANSCTRL_TRANSMODE_SET(spi_trans_read_only));
         /* reset the fifo*/
         PORT_SPI_BASE->CTRL |= SPI_CTRL_TXFIFORST_MASK | SPI_CTRL_RXFIFORST_MASK | SPI_CTRL_SPIRST_MASK;
@@ -138,6 +139,7 @@ static hpm_stat_t hpm_spi_transfer_via_dma(SPI_Type *spi_ptr, DMA_Type *dma_ptr,
         }
     } else {
         /* set mode is readonly. and set the transfer len is 1*/
+        PORT_SPI_BASE->TRANSCTRL = ((PORT_SPI_BASE->TRANSCTRL & ~SPI_TRANSCTRL_WRTRANCNT_MASK) | SPI_TRANSCTRL_WRTRANCNT_SET(len - 1));
         PORT_SPI_BASE->TRANSCTRL = ((PORT_SPI_BASE->TRANSCTRL & ~SPI_TRANSCTRL_TRANSMODE_MASK) | SPI_TRANSCTRL_TRANSMODE_SET(spi_trans_write_only));
         /* reset the fifo*/
         PORT_SPI_BASE->CTRL |= SPI_CTRL_TXFIFORST_MASK | SPI_CTRL_RXFIFORST_MASK | SPI_CTRL_SPIRST_MASK;
@@ -236,15 +238,13 @@ static void spi_rbusrt(uint8_t* pBuf, uint16_t len)
     uint16_t read_size = 0;
     uint32_t temp;
     uint8_t *dst_8 = (uint8_t *) pBuf;
-#if defined(SPI_SOC_HAS_NEW_TRANS_COUNT) && (SPI_SOC_HAS_NEW_TRANS_COUNT == 1)
-    PORT_SPI_BASE->WR_TRANS_CNT = len - 1;
-    PORT_SPI_BASE->RD_TRANS_CNT = len - 1;
-#endif
     if (len <= SPI_SOC_FIFO_DEPTH) {
         /* set mode is readonly. and set the transfer len is 1*/
+        PORT_SPI_BASE->TRANSCTRL = ((PORT_SPI_BASE->TRANSCTRL & ~SPI_TRANSCTRL_RDTRANCNT_MASK) | SPI_TRANSCTRL_RDTRANCNT_SET(len - 1));
         PORT_SPI_BASE->TRANSCTRL = ((PORT_SPI_BASE->TRANSCTRL & ~SPI_TRANSCTRL_TRANSMODE_MASK) | SPI_TRANSCTRL_TRANSMODE_SET(spi_trans_read_only));
-        PORT_SPI_BASE->TRANSCTRL = ((PORT_SPI_BASE->TRANSCTRL & ~SPI_TRANSCTRL_RDTRANCNT_MASK) | SPI_TRANSCTRL_RDTRANCNT_SET(len - 1)) |
-                                    ((PORT_SPI_BASE->TRANSCTRL & ~SPI_TRANSCTRL_WRTRANCNT_MASK) | SPI_TRANSCTRL_WRTRANCNT_SET(len - 1));
+#if defined(SPI_SOC_HAS_NEW_TRANS_COUNT) && (SPI_SOC_HAS_NEW_TRANS_COUNT == 1)
+        PORT_SPI_BASE->RD_TRANS_CNT = len - 1;
+#endif
         /* reset the fifo*/
         PORT_SPI_BASE->CTRL |= SPI_CTRL_TXFIFORST_MASK | SPI_CTRL_RXFIFORST_MASK | SPI_CTRL_SPIRST_MASK;
         /* start tranfer */
@@ -287,15 +287,13 @@ static void spi_wburst(uint8_t* pBuf, uint16_t len)
     uint16_t remaining_len = len;
     uint16_t read_size = 0;
     uint8_t *dst_8 = (uint8_t *) pBuf;
-#if defined(SPI_SOC_HAS_NEW_TRANS_COUNT) && (SPI_SOC_HAS_NEW_TRANS_COUNT == 1)
-        PORT_SPI_BASE->WR_TRANS_CNT = len - 1;
-        PORT_SPI_BASE->RD_TRANS_CNT = len - 1;
-#endif
     if (len <= SPI_SOC_FIFO_DEPTH) {
         /* set mode is readonly. and set the transfer len is 1*/
         PORT_SPI_BASE->TRANSCTRL = ((PORT_SPI_BASE->TRANSCTRL & ~SPI_TRANSCTRL_TRANSMODE_MASK) | SPI_TRANSCTRL_TRANSMODE_SET(spi_trans_write_only));
-        PORT_SPI_BASE->TRANSCTRL =  ((PORT_SPI_BASE->TRANSCTRL & ~SPI_TRANSCTRL_RDTRANCNT_MASK) | SPI_TRANSCTRL_RDTRANCNT_SET(0)) |
-                                ((PORT_SPI_BASE->TRANSCTRL & ~SPI_TRANSCTRL_WRTRANCNT_MASK) | SPI_TRANSCTRL_WRTRANCNT_SET(0));
+#if defined(SPI_SOC_HAS_NEW_TRANS_COUNT) && (SPI_SOC_HAS_NEW_TRANS_COUNT == 1)
+        PORT_SPI_BASE->WR_TRANS_CNT = len - 1;
+#endif
+        PORT_SPI_BASE->TRANSCTRL =  ((PORT_SPI_BASE->TRANSCTRL & ~SPI_TRANSCTRL_WRTRANCNT_MASK) | SPI_TRANSCTRL_WRTRANCNT_SET(len - 1));
         /* reset the fifo*/
         PORT_SPI_BASE->CTRL |= SPI_CTRL_TXFIFORST_MASK | SPI_CTRL_RXFIFORST_MASK | SPI_CTRL_SPIRST_MASK;
         actual_cs_sel();
@@ -328,9 +326,9 @@ uint8_t wizchip_read_byte(uint8_t *addr_sel, uint8_t addr_sel_len)
 {
     uint8_t i = 0;
     /* set mode is readonly. and set the transfer len is 1*/
+    PORT_SPI_BASE->TRANSCTRL =  ((PORT_SPI_BASE->TRANSCTRL & ~SPI_TRANSCTRL_RDTRANCNT_MASK) | SPI_TRANSCTRL_RDTRANCNT_SET(0));
+    PORT_SPI_BASE->TRANSCTRL =  ((PORT_SPI_BASE->TRANSCTRL & ~SPI_TRANSCTRL_WRTRANCNT_MASK) | SPI_TRANSCTRL_WRTRANCNT_SET(addr_sel_len - 1));
     PORT_SPI_BASE->TRANSCTRL = ((PORT_SPI_BASE->TRANSCTRL & ~SPI_TRANSCTRL_TRANSMODE_MASK) | SPI_TRANSCTRL_TRANSMODE_SET(spi_trans_write_read));
-    PORT_SPI_BASE->TRANSCTRL =  ((PORT_SPI_BASE->TRANSCTRL & ~SPI_TRANSCTRL_RDTRANCNT_MASK) | SPI_TRANSCTRL_RDTRANCNT_SET(0)) |
-                                ((PORT_SPI_BASE->TRANSCTRL & ~SPI_TRANSCTRL_WRTRANCNT_MASK) | SPI_TRANSCTRL_WRTRANCNT_SET(addr_sel_len - 1));
 #if defined(SPI_SOC_HAS_NEW_TRANS_COUNT) && (SPI_SOC_HAS_NEW_TRANS_COUNT == 1)
     PORT_SPI_BASE->WR_TRANS_CNT = addr_sel_len - 1;
     PORT_SPI_BASE->RD_TRANS_CNT = 0;
@@ -401,4 +399,22 @@ void wizchip_spi_init(void)
     PORT_SPI_BASE->CTRL |= SPI_CTRL_TXDMAEN_MASK | SPI_CTRL_RXDMAEN_MASK;
     dmamux_config(PORT_SPI_DMAMUX, PORT_SPI_TX_DMAMUX_CH, PORT_SPI_TX_DMA_REQ, true);
     dmamux_config(PORT_SPI_DMAMUX, PORT_SPI_RX_DMAMUX_CH, PORT_SPI_RX_DMA_REQ, true);
+}
+
+void wizchip_spi_change_freq(int freq)
+{
+    spi_timing_config_t timing_config = {0};
+    uint32_t spi_clcok;
+    if (freq <= 0) {
+        freq = PORT_SPI_SCLK_FREQ;
+    }
+    spi_clcok = board_init_spi_clock(PORT_SPI_BASE);
+    spi_master_get_default_timing_config(&timing_config);
+    timing_config.master_config.cs2sclk = spi_cs2sclk_half_sclk_1;
+    timing_config.master_config.csht = spi_csht_half_sclk_1;
+    timing_config.master_config.clk_src_freq_in_hz = spi_clcok;
+    timing_config.master_config.sclk_freq_in_hz = freq;
+    if (status_success != spi_master_timing_init(PORT_SPI_BASE, &timing_config)) {
+        printf("SPI master timing init failed\n");
+    }
 }

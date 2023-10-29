@@ -16,6 +16,7 @@
 #include "loopback.h"
 #include _WIZCHIP_STR_
 
+#define   DHCP_ENABLE_SPI_FREQENCY       (10000000U)
 wiz_NetInfo g_winznet_info;
 
 uint8_t ar[16] = {2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2};
@@ -49,10 +50,12 @@ static void load_net_parameters(void)
     g_winznet_info.dhcp = NETINFO_STATIC;
 }
 
+#if defined(CONFIG_WIZNET_DCHP) && (CONFIG_WIZNET_DCHP == 1)
 static void network_init(void)
 {
     ctlnetwork(CN_SET_NETINFO, (void*)&g_winznet_info);
 }
+
 static void my_ip_assign(void)
 {
    getIPfromDHCP(g_winznet_info.ip);
@@ -68,9 +71,10 @@ static void my_ip_assign(void)
 static void my_ip_conflict(void)
 {
 	printf("CONFLICT IP from DHCP\r\n");
-	//halt or reset or any...
+	/* halt or reset or any... */
 	while(1); // this example is halt.
 }
+#endif
 
 int main(void)
 {
@@ -90,14 +94,13 @@ int main(void)
             printf("Unknown PHY Link stauts.\r\n");
         }
     }while(tmp == PHY_LINK_OFF);
-    printf("SIP: %d.%d.%d.%d\r\n", g_winznet_info.ip[0],g_winznet_info.ip[1],g_winznet_info.ip[2],g_winznet_info.ip[3]);
-    printf("GAR: %d.%d.%d.%d\r\n", g_winznet_info.gw[0],g_winznet_info.gw[1],g_winznet_info.gw[2],g_winznet_info.gw[3]);
-    printf("SUB: %d.%d.%d.%d\r\n", g_winznet_info.sn[0],g_winznet_info.sn[1],g_winznet_info.sn[2],g_winznet_info.sn[3]);
-    printf("DNS: %d.%d.%d.%d\r\n", g_winznet_info.dns[0],g_winznet_info.dns[1],g_winznet_info.dns[2],g_winznet_info.dns[3]);
-
-#if defined(CONFIG_WIZNET_DCHP) || (CONFIG_WIZNET_DCHP == 1)
-    setSHAR(g_winznet_info.mac);
-    DHCP_init(0,dhcp_buff);
+    printf("the wiznet chip is:%s \r\n", strtok(_WIZCHIP_STR_, "."));
+    // setSHAR(g_winznet_info.mac);
+#if defined(CONFIG_WIZNET_DCHP) && (CONFIG_WIZNET_DCHP == 1)
+    /* When dhcp is turned on, the w5100s will have problems receiving and parsing the mac address of the dhcp client
+     because the frequency is too high, so the frequency needs to be reduced.*/
+    wizchip_spi_change_freq(DHCP_ENABLE_SPI_FREQENCY);
+    DHCP_init(0, dhcp_buff);
     reg_dhcp_cbfunc(my_ip_assign, my_ip_assign, my_ip_conflict);
     uint8_t dhcp_ret = DHCP_run();
     while(dhcp_ret != DHCP_IP_LEASED) {
@@ -105,13 +108,22 @@ int main(void)
         board_delay_ms(1000);
         dhcp_ret = DHCP_run();
     }
-    printf("dhcp okkkk\n");
-#endif
-
+    printf("dhcp ip: \r\n");
     printf("SIP: %d.%d.%d.%d\r\n", g_winznet_info.ip[0],g_winznet_info.ip[1],g_winznet_info.ip[2],g_winznet_info.ip[3]);
     printf("GAR: %d.%d.%d.%d\r\n", g_winznet_info.gw[0],g_winznet_info.gw[1],g_winznet_info.gw[2],g_winznet_info.gw[3]);
     printf("SUB: %d.%d.%d.%d\r\n", g_winznet_info.sn[0],g_winznet_info.sn[1],g_winznet_info.sn[2],g_winznet_info.sn[3]);
     printf("DNS: %d.%d.%d.%d\r\n", g_winznet_info.dns[0],g_winznet_info.dns[1],g_winznet_info.dns[2],g_winznet_info.dns[3]);
+    wizchip_spi_change_freq(-1); /* resore the default freq */
+#else
+    setSUBR(g_winznet_info.sn);
+    setGAR(g_winznet_info.gw);
+    setSIPR(g_winznet_info.ip);
+    printf("static ip: \r\n");
+    printf("SIP: %d.%d.%d.%d\r\n", g_winznet_info.ip[0],g_winznet_info.ip[1],g_winznet_info.ip[2],g_winznet_info.ip[3]);
+    printf("GAR: %d.%d.%d.%d\r\n", g_winznet_info.gw[0],g_winznet_info.gw[1],g_winznet_info.gw[2],g_winznet_info.gw[3]);
+    printf("SUB: %d.%d.%d.%d\r\n", g_winznet_info.sn[0],g_winznet_info.sn[1],g_winznet_info.sn[2],g_winznet_info.sn[3]);
+    printf("DNS: %d.%d.%d.%d\r\n", g_winznet_info.dns[0],g_winznet_info.dns[1],g_winznet_info.dns[2],g_winznet_info.dns[3]);
+#endif
     memset(tcpc_buff, 0x66, sizeof(tcpc_buff));
     while (1) {
 #if defined(CONFIG_TCP_CLIENT_IPERF) || (CONFIG_TCP_CLIENT_IPERF == 1)

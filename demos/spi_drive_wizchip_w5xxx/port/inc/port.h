@@ -10,4 +10,5 @@
 #include "hpm_common.h"
 void wizchip_spi_init(void);
 void wizchip_register_port(void);
+void wizchip_spi_change_freq(int freq);
 #endif
