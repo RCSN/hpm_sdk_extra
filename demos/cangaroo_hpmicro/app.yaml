@@ -1,0 +1,5 @@
+minimum_sdk_version:
+  - 1.7.0
+
+dependency:
+  - mcan
