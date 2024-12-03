@@ -6,7 +6,7 @@
  */
 
 #include "mcan.h"
-#include "pinmux.h"
+#include "board.h"
 
 mcan_rx_message_t    g_mcan_rx_frame[CANFD_NUM][MCAN_RXBUF_SIZE_CAN_DEFAULT];
 mcan_tx_frame_t      g_mcan_tx_frame[CANFD_NUM];
@@ -80,23 +80,19 @@ void mcan_pinmux_init(uint8_t can_num)
     }
     switch (can_num) {
     case 0:
-        HPM_IOC->PAD[IOC_PAD_PB00].FUNC_CTL = IOC_PB00_FUNC_CTL_MCAN0_TXD;
-        HPM_IOC->PAD[IOC_PAD_PB01].FUNC_CTL = IOC_PB01_FUNC_CTL_MCAN0_RXD; 
+        board_init_can(HPM_MCAN0);
         break;
 
     case 1:
-        HPM_IOC->PAD[IOC_PAD_PB05].FUNC_CTL = IOC_PB05_FUNC_CTL_MCAN1_TXD;
-        HPM_IOC->PAD[IOC_PAD_PB04].FUNC_CTL = IOC_PB04_FUNC_CTL_MCAN1_RXD; 
+        board_init_can(HPM_MCAN1);
         break;
 
     case 2:
-        HPM_IOC->PAD[IOC_PAD_PB08].FUNC_CTL = IOC_PB08_FUNC_CTL_MCAN2_TXD;
-        HPM_IOC->PAD[IOC_PAD_PB09].FUNC_CTL = IOC_PB09_FUNC_CTL_MCAN2_RXD; 
+        board_init_can(HPM_MCAN2); 
         break;
 
     case 3:
-        HPM_IOC->PAD[IOC_PAD_PA15].FUNC_CTL = IOC_PA15_FUNC_CTL_MCAN3_TXD;
-        HPM_IOC->PAD[IOC_PAD_PA14].FUNC_CTL = IOC_PA14_FUNC_CTL_MCAN3_RXD;
+        board_init_can(HPM_MCAN3);
         break;
     }
 }

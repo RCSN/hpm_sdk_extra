@@ -262,7 +262,7 @@ void WS2812_Init(void)
     _bit0_pluse_width = _gptmr_freq / _WS2812_Freq / 3;     // 0的脉冲宽度
     _bit1_pluse_width = _gptmr_freq / _WS2812_Freq * 2 / 3; // 1的脉冲宽度
 #else
-    HPM_IOC->PAD[IOC_PAD_PB13].FUNC_CTL = IOC_PAD_FUNC_CTL_ALT_SELECT_SET(5);
+    HPM_IOC->PAD[IOC_PAD_PA29].FUNC_CTL = IOC_PA29_FUNC_CTL_SPI1_MOSI;
     /* step.1  initialize spi */
     spi_init();
     /* step.2  set spi sclk frequency for master */

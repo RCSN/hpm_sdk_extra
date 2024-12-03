@@ -308,7 +308,7 @@ int32_t slcan_uart_read(struct slcan_t *slcan_port) {
 
 uint32_t slcan_uart_write(struct slcan_t *slcan_port, void *buffer,
                           uint32_t size) {
-    uint32_t res;
+    uint32_t res = 0 ;
     if (slcan_port->uartdev_sn < SCLAN_NUM) // USB_VCOM used sn < 4
     {
         res = write_usb_data(slcan_port->uartdev_sn, (uint8_t *)buffer, size); //Data Point to USB_VCOM
@@ -470,10 +470,10 @@ void slcan_parse_ascii(struct slcan_t *slcan_port) {
     /* for answers to received commands */
     int rx_out_len = 0;                        // uart ack data lenght
     char replybuf[10] = {0};                   // uart ack data buffer
-    uint8_t uart_status;                       // uart cmd ack status
+    volatile uint8_t uart_status = 0;                       // uart cmd ack status
     uint8_t *buf = slcan_port->uart_rx_buffer; // cmd data buffer
 
-    uint8_t cmd_bytes; // uart cmd lenght :	cmd_bytes = 1 has no parameter
+    volatile uint8_t cmd_bytes; // uart cmd lenght :	cmd_bytes = 1 has no parameter
                        //									cmd_bytes
                        //= 2 has 1 parameter
 
