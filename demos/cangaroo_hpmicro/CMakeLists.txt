@@ -14,7 +14,10 @@ find_package(hpm-sdk REQUIRED HINTS $ENV{HPM_SDK_BASE})
 project(hpmicro_cangaroo)
 
 # sdk_compile_definitions(-DSLCAN_DEBUG=printf)
+sdk_compile_definitions(-DUSE_DEBUG=1)
 sdk_compile_definitions(-DWS2812_USE_SPI=1)
+
+# sdk_compile_definitions(-DDOUBLE_WINUSB=1)
 
 sdk_inc(inc)
 sdk_inc(protocol/slcan/inc)
@@ -25,4 +28,5 @@ sdk_app_src(protocol/slcan/src/slcan.c)
 sdk_app_src(src/main.c)
 sdk_app_src(src/cdc_acm.c)
 sdk_app_src(ws2812/WS2812.c)
+# sdk_app_src(src/winusb10.c src/usbd_gs_can.c)
 generate_ide_projects()
