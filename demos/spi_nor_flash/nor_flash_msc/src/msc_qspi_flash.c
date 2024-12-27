@@ -115,20 +115,52 @@ typedef struct {
 
 BLOCK_TYPE mass_block[BLOCK_COUNT];
 
-void usbd_msc_get_cap(uint8_t lun, uint32_t *block_num, uint16_t *block_size)
+static void usbd_event_handler(uint8_t busid, uint8_t event)
 {
+    (void)busid;
+    switch (event) {
+        case USBD_EVENT_RESET:
+            break;
+        case USBD_EVENT_CONNECTED:
+            break;
+        case USBD_EVENT_DISCONNECTED:
+            break;
+        case USBD_EVENT_RESUME:
+            break;
+        case USBD_EVENT_SUSPEND:
+            break;
+        case USBD_EVENT_CONFIGURED:
+            break;
+        case USBD_EVENT_SET_REMOTE_WAKEUP:
+            break;
+        case USBD_EVENT_CLR_REMOTE_WAKEUP:
+            break;
+
+        default:
+            break;
+    }
+}
+
+void usbd_msc_get_cap(uint8_t busid, uint8_t lun, uint32_t *block_num, uint32_t *block_size)
+{
+    (void)busid;
+    (void)lun;
     *block_num = (spi_flash_info.size_in_kbytes) / spi_flash_info.sector_size_kbytes; /* Pretend having so many buffer,not has actually. */
     *block_size = spi_flash_info.sector_size_kbytes * 1024;
 }
-int usbd_msc_sector_read(uint32_t sector, uint8_t *buffer, uint32_t length)
+int usbd_msc_sector_read(uint8_t busid, uint8_t lun, uint32_t sector, uint8_t *buffer, uint32_t length)
 {
+    (void)busid;
+    (void)lun;
     hpm_stat_t stat;
     stat = hpm_serial_nor_read(&nor_flash_dev, buffer, length, sector * spi_flash_info.sector_size_kbytes * 1024);
     return (stat == status_success) ? 0 : -1;
 }
 
-int usbd_msc_sector_write(uint32_t sector, uint8_t *buffer, uint32_t length)
+int usbd_msc_sector_write(uint8_t busid, uint8_t lun, uint32_t sector, uint8_t *buffer, uint32_t length)
 {
+    (void)busid;
+    (void)lun;
     hpm_stat_t stat;
     stat = hpm_serial_nor_erase_blocking(&nor_flash_dev, sector * spi_flash_info.sector_size_kbytes * 1024, length);
     stat = hpm_serial_nor_program_blocking(&nor_flash_dev, buffer, length, sector * spi_flash_info.sector_size_kbytes * 1024);
@@ -144,11 +176,11 @@ int usbd_msc_sector_write(uint32_t sector, uint8_t *buffer, uint32_t length)
  */
 struct usbd_interface intf0;
 
-void msc_spi_flash_init(void)
+void msc_spi_flash_init(uint8_t busid, uintptr_t reg_base)
 {
     hpm_serial_nor_get_info(&nor_flash_dev, &spi_flash_info);
-    usbd_desc_register(msc_ram_descriptor);
-    usbd_add_interface(usbd_msc_init_intf(&intf0, MSC_OUT_EP, MSC_IN_EP));
+    usbd_desc_register(busid, msc_ram_descriptor);
+    usbd_add_interface(busid, usbd_msc_init_intf(busid, &intf0, MSC_OUT_EP, MSC_IN_EP));
 
-    usbd_initialize();
+    usbd_initialize(busid, reg_base, usbd_event_handler);
 }

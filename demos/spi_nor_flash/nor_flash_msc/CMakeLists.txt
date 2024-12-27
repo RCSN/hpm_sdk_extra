@@ -10,7 +10,7 @@ set(CONFIG_FREERTOS 1)
 
 find_package(hpm-sdk REQUIRED HINTS $ENV{HPM_SDK_BASE})
 
-project(spi_nor_flash_demo)
+project(nor_flash_msc_demo)
 
 sdk_inc($ENV{HPM_SDK_BASE}/components/serial_nor)
 sdk_inc(../common/port)

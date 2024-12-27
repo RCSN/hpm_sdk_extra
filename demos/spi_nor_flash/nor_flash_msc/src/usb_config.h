@@ -7,9 +7,8 @@
 #ifndef CHERRYUSB_CONFIG_H
 #define CHERRYUSB_CONFIG_H
 
-#include "hpm_soc.h"
+#include "hpm_soc_feature.h"
 
-#define CHERRYUSB_VERSION 0x001001
 
 /* ================ USB common Configuration ================ */
 
@@ -48,7 +47,17 @@
 /* ================= USB Device Stack Configuration ================ */
 
 /* Ep0 max transfer buffer, specially for receiving data from ep0 out */
+#ifndef CONFIG_USBDEV_REQUEST_BUFFER_LEN
 #define CONFIG_USBDEV_REQUEST_BUFFER_LEN 512
+#endif
+
+#ifndef CONFIG_USBDEV_MSC_MAX_LUN
+#define CONFIG_USBDEV_MSC_MAX_LUN 1
+#endif
+
+#ifndef CONFIG_USBDEV_MSC_MAX_BUFSIZE
+#define CONFIG_USBDEV_MSC_MAX_BUFSIZE 4096
+#endif
 
 /* Setup packet log for debug */
 /* #define CONFIG_USBDEV_SETUP_LOG_PRINT */
@@ -58,10 +67,6 @@
 
 /* Enable test mode */
 /* #define CONFIG_USBDEV_TEST_MODE */
-
-#ifndef CONFIG_USBDEV_MSC_BLOCK_SIZE
-#define CONFIG_USBDEV_MSC_BLOCK_SIZE 4096
-#endif
 
 #ifndef CONFIG_USBDEV_MSC_MANUFACTURER_STRING
 #define CONFIG_USBDEV_MSC_MANUFACTURER_STRING ""
@@ -143,11 +148,17 @@
 
 /* ================ USB Device Port Configuration ================*/
 
+#define CONFIG_USBDEV_MAX_BUS USB_SOC_MAX_COUNT
+
+#ifndef CONFIG_USBDEV_EP_NUM
+#define CONFIG_USBDEV_EP_NUM USB_SOC_DCD_MAX_ENDPOINT_COUNT
+#endif
+
 #ifndef CONFIG_HPM_USBD_BASE
-#define CONFIG_HPM_USBD_BASE    HPM_USB0_BASE
+#define CONFIG_HPM_USBD_BASE HPM_USB0_BASE
 #endif
 #ifndef CONFIG_HPM_USBD_IRQn
-#define CONFIG_HPM_USBD_IRQn    IRQn_USB0
+#define CONFIG_HPM_USBD_IRQn IRQn_USB0
 #endif
 
 /* ================ USB Host Port Configuration ==================*/

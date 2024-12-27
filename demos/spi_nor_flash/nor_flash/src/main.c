@@ -77,13 +77,13 @@ int main(void)
             addr = 0;
             while (hpm_serial_nor_is_busy(&nor_flash_dev) == status_spi_nor_flash_is_busy) {
             };
-            hpm_serial_nor_erase_sector_noblocking(&nor_flash_dev, addr);
+            hpm_serial_nor_erase_sector_nonblocking(&nor_flash_dev, addr);
             while (hpm_serial_nor_is_busy(&nor_flash_dev) == status_spi_nor_flash_is_busy) {
             };
             for (i = 0; i < flash_info.page_size; i++) {
                 wbuff[i] = (i + 10) % 0xFF;
             }
-            hpm_serial_nor_page_program_noblocking(&nor_flash_dev, wbuff, flash_info.page_size, addr);
+            hpm_serial_nor_page_program_nonblocking(&nor_flash_dev, wbuff, flash_info.page_size, addr);
             while (hpm_serial_nor_is_busy(&nor_flash_dev) == status_spi_nor_flash_is_busy) {
             };
             board_delay_ms(10);

@@ -5,7 +5,7 @@
  *
  */
 
-#ifdef CONFIG_HAS_HPMSDK_DMAV2
+#ifdef HPMSOC_HAS_HPMSDK_DMAV2
 #include "hpm_dmav2_drv.h"
 #else
 #include "hpm_dma_drv.h"
@@ -27,7 +27,7 @@
 #define PORT_SPI_TX_DMA_REQ        BOARD_APP_SPI_TX_DMA
 #define PORT_SPI_RX_DMA_CH         0
 #define PORT_SPI_TX_DMA_CH         1
-#define PORT_SPI_CLK_FREQUENCY     (50000000u)
+#define PORT_SPI_CLK_FREQUENCY     (40000000u)
 
 static void set_spi_clk_frequency(void *ops, uint32_t frequency);
 

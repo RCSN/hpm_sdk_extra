@@ -9,7 +9,7 @@
 #include "hpm_debug_console.h"
 #include "hpm_spi_drv.h"
 #include "hpm_clock_drv.h"
-#ifdef CONFIG_HAS_HPMSDK_DMAV2
+#ifdef HPMSOC_HAS_HPMSDK_DMAV2
 #include "hpm_dmav2_drv.h"
 #else
 #include "hpm_dma_drv.h"
@@ -22,24 +22,15 @@
 #include "hpm_serial_nor.h"
 #include "hpm_serial_nor_host_port.h"
 
+#include "usb_config.h"
 #include "FreeRTOS.h"
 #include "task.h"
-
-#define APP_SPI_DATA_LEN_IN_BITS  (8U)
-#define APP_SPI_BASE              HPM_SPI1
-#define APP_SPI_CLK_NAME          clock_spi1
-#define APP_SPI_RX_HDMA_REQ       HPM_DMA_SRC_SPI1_RX
-#define APP_SPI_TX_HDMA_REQ       HPM_DMA_SRC_SPI1_TX
-#define APP_SPI_RX_HDMA_CH         0
-#define APP_SPI_TX_HDMA_CH         1
-#define APP_SPI_CLK_FREQUENCY     (50000000u)
-
 
 #ifndef PLACE_BUFF_AT_CACHEABLE
 #define PLACE_BUFF_AT_CACHEABLE 1
 #endif
 
-extern void msc_spi_flash_init(void);
+extern void msc_spi_flash_init(uint8_t busid, uintptr_t reg_base);
 
 hpm_serial_nor_t nor_flash_dev = {0};
 
@@ -48,6 +39,7 @@ int main(void)
     hpm_stat_t stat;
     hpm_serial_nor_info_t flash_info;
     board_init();
+    board_init_usb((USB_Type *)CONFIG_HPM_USBD_BASE);
     serial_nor_get_board_host(&nor_flash_dev.host);
     board_init_spi_clock(nor_flash_dev.host.host_param.param.host_base);
     serial_nor_spi_pins_init(nor_flash_dev.host.host_param.param.host_base);
@@ -65,7 +57,7 @@ int main(void)
             printf("the flash block_erase_cmd:0x%02x\n", flash_info.block_erase_cmd);
         }
         printf("spi nor flash init ok\n");
-        msc_spi_flash_init();
+        msc_spi_flash_init(0, CONFIG_HPM_USBD_BASE);
         vTaskStartScheduler();
     }
     while (1) {
