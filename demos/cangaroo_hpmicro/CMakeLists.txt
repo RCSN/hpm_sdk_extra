@@ -15,14 +15,22 @@ project(hpmicro_cangaroo)
 
 # sdk_compile_definitions(-DSLCAN_DEBUG=printf)
 sdk_compile_definitions(-DWS2812_USE_SPI=1)
+sdk_compile_definitions(-DCONFIG_SLCAN0)
+sdk_compile_definitions(-DCONFIG_SLCAN1)
+sdk_compile_definitions(-DCONFIG_SLCAN2)
+sdk_compile_definitions(-DCONFIG_SLCAN3)
 
 sdk_inc(inc)
 sdk_inc(protocol/slcan/inc)
 sdk_inc(ws2812)
+sdk_inc(protocol)
 sdk_inc(protocol/driver/mcan)
 sdk_app_src(protocol/driver/mcan/mcan.c)
 sdk_app_src(protocol/slcan/src/slcan.c)
+sdk_app_src(protocol/usb2can.c)
 sdk_app_src(src/main.c)
 sdk_app_src(src/cdc_acm.c)
 sdk_app_src(ws2812/WS2812.c)
+
+
 generate_ide_projects()
