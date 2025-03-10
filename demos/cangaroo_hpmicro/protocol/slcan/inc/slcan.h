@@ -4,7 +4,7 @@
 #include "stdint.h"
 #include "stdio.h"
 #include "string.h"
-
+#include "usb2can.h"
 #include "hpm_mcan_drv.h"
 
 /*---------------------------------------------------------------------------------------------------------*/
@@ -16,7 +16,6 @@
 #define SLCAN_DEBUG(...)
 #endif
 
-#define SCLAN_NUM 4
 
 
 /* maximum rx buffer len: extended CAN frame with timestamp */
@@ -54,6 +53,7 @@ typedef struct {
 
 
 struct slcan_t {
+    cdc_can_device_t g_cdc_can_device;
     MCAN_Type *ptr;
     uint32_t irq_num;
     uint8_t candev_sn;        // CAN operating channel
@@ -79,7 +79,7 @@ struct slcan_t {
     uint8_t uart_tx_buffer[SLCAN_MTU]; // uart TX message
     uint32_t timestamp;
 };
-
+extern struct slcan_t slcan0, slcan1, slcan2, slcan3;
 enum slcan_uart_status {
     SLCAN_UART_EXIT = 0,
     SLCAN_UART_ACK,
@@ -145,12 +145,12 @@ void slcan_process_can(struct slcan_t *slcan_port);
 void slcan_process_task(struct slcan_t *slcan_port);
 
 // slcan instance initialization
-void slcan_init(void);
-void slcan_port0_init(void);
-void slcan_port1_init(void);
-void slcan_port2_init(void);
-void slcan_port3_init(void);
-void slcan_timestamp(void);
+
+void slcan_port0_init(struct slcan_t *slcan);
+void slcan_port1_init(struct slcan_t *slcan);
+void slcan_port2_init(struct slcan_t *slcan);
+void slcan_port3_init(struct slcan_t *slcan);
+void slcan_timestamp(struct slcan_t *slcan);
 
 #ifdef __cplusplus
 }
