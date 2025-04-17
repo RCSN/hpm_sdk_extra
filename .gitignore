@@ -25,3 +25,4 @@ segger_embedded_studio
 sec_core_img.c
 *.o
 
+.cache

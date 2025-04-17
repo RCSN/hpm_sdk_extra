@@ -9,10 +9,14 @@
 #include "hpm_debug_console.h"
 #include "hpm_spi_drv.h"
 #include "hpm_clock_drv.h"
+#if (USE_SERIAL_NOR_DMA_MGR == 1)
+#include "hpm_dma_mgr.h"
+#else
 #ifdef HPMSOC_HAS_HPMSDK_DMAV2
 #include "hpm_dmav2_drv.h"
 #else
 #include "hpm_dma_drv.h"
+#endif
 #endif
 #include "hpm_dmamux_drv.h"
 #include "hpm_gpiom_drv.h"
@@ -39,7 +43,11 @@ int main(void)
     hpm_stat_t stat;
     hpm_serial_nor_info_t flash_info;
     board_init();
+#if (USE_SERIAL_NOR_DMA_MGR == 1)
+    dma_mgr_init();
+#endif
     board_init_usb((USB_Type *)CONFIG_HPM_USBD_BASE);
+    intc_set_irq_priority(CONFIG_HPM_USBD_IRQn, 2);
     serial_nor_get_board_host(&nor_flash_dev.host);
     board_init_spi_clock(nor_flash_dev.host.host_param.param.host_base);
     serial_nor_spi_pins_init(nor_flash_dev.host.host_param.param.host_base);

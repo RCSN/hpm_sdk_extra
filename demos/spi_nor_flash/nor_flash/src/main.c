@@ -11,6 +11,9 @@
 #include "hpm_mchtmr_drv.h"
 #include "hpm_serial_nor.h"
 #include "hpm_serial_nor_host_port.h"
+#if (USE_SERIAL_NOR_DMA_MGR == 1)
+#include "hpm_dma_mgr.h"
+#endif
 
 #define TRANSFER_SIZE (15360U)
 ATTR_PLACE_AT_WITH_ALIGNMENT(".ahb_sram", HPM_L1C_CACHELINE_SIZE) uint8_t wbuff[TRANSFER_SIZE];
@@ -30,6 +33,9 @@ int main(void)
     double write_speed, read_speed;
 
     board_init();
+#if (USE_SERIAL_NOR_DMA_MGR == 1)
+    dma_mgr_init();
+#endif
     serial_nor_get_board_host(&nor_flash_dev.host);
     board_init_spi_clock(nor_flash_dev.host.host_param.param.host_base);
     serial_nor_spi_pins_init(nor_flash_dev.host.host_param.param.host_base);
