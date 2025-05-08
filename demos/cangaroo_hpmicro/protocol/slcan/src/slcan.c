@@ -13,8 +13,6 @@
 #include "stdio.h"
 #include "string.h"
 #include "board.h"
-#include "cdc_acm.h"
-#include "WS2812.h"
 #include "hpm_clock_drv.h"
 
 #ifndef USE_RGB_LED
@@ -277,20 +275,18 @@ int32_t slcan_uart_read(struct slcan_t *slcan_port) {
     uint32_t ticks_per_us = (hpm_core_clock + 1000000 - 1U) / 1000000;
     uint64_t expected_ticks = hpm_csr_get_core_cycle() + (uint64_t)ticks_per_us * 1000UL * 1000; //1000ms
     uint8_t data;
-    if (slcan_port->candev_sn < SCLAN_NUM) {
-        if (get_usb_out_is_empty(slcan_port->candev_sn) == false) {
-            while (1) {
-                if (get_usb_out_char(slcan_port->candev_sn, &data) == true) {
-                    slcan_port->uart_rx_buffer[slcan_port->uart_rx_len++] = (uint8_t)data;
-                    if (data == '\r') {
-                        // printf("sl_r:%d\r\n", slcan_port->uart_rx_len);
-                        return 1;
-                    }
+    if (get_usb_out_is_empty(&slcan_port->g_cdc_can_device) == false) {
+        while (1) {
+            if (get_usb_out_char(&slcan_port->g_cdc_can_device, &data) == true) {
+                slcan_port->uart_rx_buffer[slcan_port->uart_rx_len++] = (uint8_t)data;
+                if (data == '\r') {
+                    // printf("sl_r:%d\r\n", slcan_port->uart_rx_len);
+                    return 1;
                 }
-                if (hpm_csr_get_core_cycle() > expected_ticks) {
-                    slcan_port->uart_rx_len = 0;
-                    return -1;
-                }
+            }
+            if (hpm_csr_get_core_cycle() > expected_ticks) {
+                slcan_port->uart_rx_len = 0;
+                return -1;
             }
         }
     }
@@ -309,13 +305,8 @@ int32_t slcan_uart_read(struct slcan_t *slcan_port) {
 uint32_t slcan_uart_write(struct slcan_t *slcan_port, void *buffer,
                           uint32_t size) {
     uint32_t res;
-    if (slcan_port->uartdev_sn < SCLAN_NUM) // USB_VCOM used sn < 4
-    {
-        res = write_usb_data(slcan_port->uartdev_sn, (uint8_t *)buffer, size); //Data Point to USB_VCOM
-    } else {
-        // user add uart port data read code
-        // Data Point to UART
-    }
+    res = write_usb_data(&slcan_port->g_cdc_can_device, (uint8_t *)buffer, size); //Data Point to USB_VCOM
+
     return res;
 }
 
@@ -819,11 +810,11 @@ void slcan_process_uart(struct slcan_t *slcan_port) {
             memset(slcan_port->uart_rx_buffer, 0, SLCAN_MTU);
             return;
         }
-        // SLCAN_DEBUG("[com%d]>>[can%d]:", slcan_port->candev_sn, slcan_port->candev_sn);
-        // for (uint32_t i = 0; i < slcan_port->uart_rx_len; i++) {
-        //     SLCAN_DEBUG("%c",slcan_port->uart_rx_buffer[i]);
-        // }
-        // SLCAN_DEBUG("\n");
+         SLCAN_DEBUG("[com%d]>>[can%d]:", slcan_port->candev_sn, slcan_port->candev_sn);
+         for (uint32_t i = 0; i < slcan_port->uart_rx_len; i++) {
+             SLCAN_DEBUG("%c",slcan_port->uart_rx_buffer[i]);
+         }
+         SLCAN_DEBUG("\n");
 
         slcan_parse_ascii(slcan_port); // uart data conversion
         slcan_port->uart_rx_len = 0;
@@ -928,8 +919,8 @@ void slcan_process_can(struct slcan_t *slcan_port)
             if (tx_len <= 0) {
                 return;
             }
-            // SLCAN_DEBUG("[can%d]>>[com%d]: fifo:%d tx_len:%d\r\n", slcan_port->candev_sn,
-            //             slcan_port->candev_sn, i, tx_len);
+             SLCAN_DEBUG("[can%d]>>[com%d]: fifo:%d tx_len:%d\r\n", slcan_port->candev_sn,
+                         slcan_port->candev_sn, i, tx_len);
             slcan_uart_write(slcan_port, slcan_port->uart_tx_buffer, tx_len);
             memset(&slcan_port->can_rx_msg, 0, sizeof(mcan_rx_message_t));
             can_led(slcan_port->candev_sn, true, false);
@@ -954,8 +945,7 @@ void slcan_process_task(struct slcan_t *slcan_port) {
  * @return
  * @details
  */
-void slcan_port0_init(void) {
-    struct slcan_t *slcan = &slcan0;
+void slcan_port0_init(struct slcan_t *slcan) {
 
     /*slcan port 0 initialization */
     slcan->candev_sn = 0; // CANFD Port0
@@ -981,15 +971,13 @@ void slcan_port0_init(void) {
                 slcan->uartdev_sn);
 }
 
-#if (SCLAN_NUM >= 2)
 /**
  * @brief       slcan instance initialization
  * @param[in]
  * @return
  * @details
  */
-void slcan_port1_init(void) {
-    struct slcan_t *slcan = &slcan1;
+void slcan_port1_init(struct slcan_t *slcan) {
 
     /*slcan port 0 initialization */
     slcan->candev_sn = 1; // CANFD Port0
@@ -1013,17 +1001,14 @@ void slcan_port1_init(void) {
     SLCAN_DEBUG("SLCAN1 Port Init: CAN[%d]<=>VCOM[%d]\r\n", slcan->candev_sn,
               slcan->uartdev_sn);
 }
-#endif
 
-#if (SCLAN_NUM >= 3)
 /**
  * @brief       slcan instance initialization
  * @param[in]
  * @return
  * @details
  */
-void slcan_port2_init(void) {
-    struct slcan_t *slcan = &slcan2;
+void slcan_port2_init(struct slcan_t *slcan) {
 
     /*slcan port 0 initialization */
     slcan->candev_sn = 2; // CANFD Port0
@@ -1047,17 +1032,14 @@ void slcan_port2_init(void) {
     SLCAN_DEBUG("SLCAN2 Port Init: CAN[%d]<=>VCOM[%d]\r\n", slcan->candev_sn,
               slcan->uartdev_sn);
 }
-#endif
 
-#if (SCLAN_NUM >= 4)
 /**
  * @brief       slcan instance initialization
  * @param[in]
  * @return
  * @details
  */
-void slcan_port3_init(void) {
-    struct slcan_t *slcan = &slcan3;
+void slcan_port3_init(struct slcan_t *slcan) {
 
     /*slcan port 0 initialization */
     slcan->candev_sn = 3; // CANFD Port0
@@ -1082,51 +1064,14 @@ void slcan_port3_init(void) {
               slcan->uartdev_sn);
 }
 
-#endif
-
-/**
- * @brief       all slcan instance initialization one time
- * @param[in]
- * @return
- * @details
- */
-void slcan_init(void) {
-#if (SCLAN_NUM >= 1)
-    slcan_port0_init();
-#endif
-#if (SCLAN_NUM >= 2)
-    slcan_port1_init();
-#endif
-#if (SCLAN_NUM >= 3)
-    slcan_port2_init();
-#endif
-#if (SCLAN_NUM >= 4)
-    slcan_port3_init();
-#endif
-}
-
 /**
  * @brief      slcan  timestamp  increase
  * @param[in]
  * @return
  * @details
  */
-void slcan_timestamp(void) {
+void slcan_timestamp(struct slcan_t *slcan) {
 
-#if (SCLAN_NUM >= 1)
-    if (slcan0.timestamp_isopen)
-        slcan0.timestamp++;
-#endif
-#if (SCLAN_NUM >= 2)
-    if (slcan1.timestamp_isopen)
-        slcan1.timestamp++;
-#endif
-#if (SCLAN_NUM >= 3)
-    if (slcan2.timestamp_isopen)
-        slcan2.timestamp++;
-#endif
-#if (SCLAN_NUM >= 4)
-    if (slcan3.timestamp_isopen)
-        slcan3.timestamp++;
-#endif
+    if (slcan->timestamp_isopen)
+        slcan->timestamp++;
 }
