@@ -6,7 +6,7 @@
  */
 
 #include "cdc_acm.h"
-#include "chry_ringbuffer.h"
+#include "slcan.h"
 
 /*!< config descriptor size 1cdc = 2 interface(bilateral(in + out) + int)*/
 
@@ -139,48 +139,6 @@ const struct usb_descriptor cdc_descriptor = {
     .string_descriptor_callback = string_descriptor_callback,
 };
 
-typedef struct {
-    uint8_t can_num;
-    cdc_device_cfg_t cdc_device;
-    uint8_t read_buffer[RX_BUFFER_SIZE];
-    uint8_t write_buffer[RX_BUFFER_SIZE];
-    chry_ringbuffer_t usb_out_rb;
-    uint8_t usb_out_mempool[1024];
-} cdc_can_device_t;
-
-USB_NOCACHE_RAM_SECTION USB_MEM_ALIGNX cdc_can_device_t g_cdc_can_device[MAX_CDC_COUNT];
-
-// cdc_device_cfg_t cdc_device[MAX_CDC_COUNT];
-
-uint8_t *usbd_get_write_buffer_ptr(uint8_t can_num)
-{
-    return (uint8_t *)g_cdc_can_device[can_num].write_buffer;
-}
-
-uint8_t *usbd_get_read_buffer_ptr(uint8_t can_num)
-{
-    return (uint8_t *)g_cdc_can_device[can_num].read_buffer;
-}
-
-bool usbd_is_tx_busy(uint8_t can_num)
-{
-    for (uint8_t i = 0; i < MAX_CDC_COUNT; i++) {
-        if (g_cdc_can_device[i].can_num == can_num) {
-            return g_cdc_can_device[i].cdc_device.ep_tx_busy_flag;
-        }
-    }
-    return true;
-}
-
-void usbd_set_tx_busy(uint8_t can_num)
-{
-    for (uint8_t i = 0; i < MAX_CDC_COUNT; i++) {
-        if (g_cdc_can_device[i].can_num == can_num) {
-            g_cdc_can_device[i].cdc_device.ep_tx_busy_flag = true;
-        }
-    }
-}
-
 static void usbd_event_handler(uint8_t busid, uint8_t event)
 {
     switch (event) {
@@ -196,9 +154,18 @@ static void usbd_event_handler(uint8_t busid, uint8_t event)
         break;
     case USBD_EVENT_CONFIGURED:
         /* setup first out ep read transfer */
-        for (uint8_t i = 0; i < MAX_CDC_COUNT; i++) {
-            usbd_ep_start_read(busid, i + 1, g_cdc_can_device[i].read_buffer, usbd_get_ep_mps(busid, i + 1));
-        }
+#ifdef CONFIG_SLCAN0
+        usbd_ep_start_read(0, CDC_OUT_EP, slcan0.g_cdc_can_device.read_buffer, usbd_get_ep_mps(busid, CDC_OUT_EP));
+#endif
+#ifdef CONFIG_SLCAN1
+        usbd_ep_start_read(0, CDC_OUT_EP1, slcan1.g_cdc_can_device.read_buffer, usbd_get_ep_mps(busid, CDC_OUT_EP1));
+#endif
+#ifdef CONFIG_SLCAN2
+        usbd_ep_start_read(0, CDC_OUT_EP2, slcan2.g_cdc_can_device.read_buffer, usbd_get_ep_mps(busid, CDC_OUT_EP2));
+#endif
+#ifdef CONFIG_SLCAN3
+        usbd_ep_start_read(0, CDC_OUT_EP3, slcan3.g_cdc_can_device.read_buffer, usbd_get_ep_mps(busid, CDC_OUT_EP3));
+#endif
         break;
     case USBD_EVENT_SET_REMOTE_WAKEUP:
         break;
@@ -210,150 +177,98 @@ static void usbd_event_handler(uint8_t busid, uint8_t event)
     }
 }
 
-void usbd_cdc_acm_bulk_out(uint8_t busid, uint8_t ep, uint32_t nbytes)
-{
-    uint16_t len = 0;
-    uint8_t can_num = (ep - 1);
-    // printf("ep:%d\n", ep);
-    // for (uint32_t i = 0; i < nbytes; i++) {
-    //     printf("%c", g_cdc_can_device[ep - 1].read_buffer[i]);
-    // }
-    if ((g_cdc_can_device[ep - 1].read_buffer[0] == 'r') && (g_cdc_can_device[ep - 1].read_buffer[1] == '_') && (g_cdc_can_device[ep - 1].read_buffer[2] == 'c') &&
-        (g_cdc_can_device[ep - 1].read_buffer[3] == 'a') && (g_cdc_can_device[ep - 1].read_buffer[4] == 'n')) {
-            can_num = g_cdc_can_device[ep - 1].read_buffer[5] - '0';
-            g_cdc_can_device[ep - 1].can_num = can_num;
-            len = sprintf((char *)g_cdc_can_device[ep - 1].write_buffer, "HPM_CAN%d_BUS", can_num);
-            // printf("%s    %d\r\n ", g_cdc_can_device[ep - 1].write_buffer, can_num);
-            usbd_ep_start_write(busid, 0x80 | ep, (const uint8_t *)g_cdc_can_device[ep - 1].write_buffer, len);
-    } else {
-        chry_ringbuffer_write(&g_cdc_can_device[ep - 1].usb_out_rb, g_cdc_can_device[ep - 1].read_buffer, nbytes);
-    }
-    usbd_ep_start_read(busid, ep, g_cdc_can_device[ep - 1].read_buffer, usbd_get_ep_mps(busid, ep));
-}
-
-void usbd_cdc_acm_bulk_in(uint8_t busid, uint8_t ep, uint32_t nbytes)
-{
-    uint8_t i;
-    if (((nbytes % usbd_get_ep_mps(busid, ep)) == 0) && nbytes) {
-        /* send zlp */
-        usbd_ep_start_write(busid, ep, NULL, 0);
-    } else {
-        for (i = 0; i < MAX_CDC_COUNT; i++) {
-            if (ep == g_cdc_can_device[i].cdc_device.cdc_in_ep.ep_addr) {
-                g_cdc_can_device[i].cdc_device.ep_tx_busy_flag = false;
-                break;
-            }
-        }
-    }
-}
 
 void cdc_acm_init(uint8_t busid, uint32_t reg_base)
 {
     uint8_t i = 0;
     struct cdc_line_coding line_coding;
     usbd_desc_register(busid, &cdc_descriptor);
-    for (i = 0; i < MAX_CDC_COUNT; i++) {
-        usbd_add_interface(busid, usbd_cdc_acm_init_intf(busid, &g_cdc_can_device[i].cdc_device.intf0));
-        usbd_add_interface(busid, usbd_cdc_acm_init_intf(busid, &g_cdc_can_device[i].cdc_device.intf1));
-        g_cdc_can_device[i].cdc_device.cdc_out_ep.ep_addr = i + 1;
-        g_cdc_can_device[i].cdc_device.cdc_in_ep.ep_addr = (0x80 | (i + 1));
-        g_cdc_can_device[i].cdc_device.cdc_out_ep.ep_cb = usbd_cdc_acm_bulk_out;
-        g_cdc_can_device[i].cdc_device.cdc_in_ep.ep_cb = usbd_cdc_acm_bulk_in;
-        usbd_add_endpoint(busid, &g_cdc_can_device[i].cdc_device.cdc_out_ep);
-        usbd_add_endpoint(busid, &g_cdc_can_device[i].cdc_device.cdc_in_ep);
-        g_cdc_can_device[i].cdc_device.is_open = false;
-        if (0 == chry_ringbuffer_init(&g_cdc_can_device[i].usb_out_rb, g_cdc_can_device[i].usb_out_mempool, sizeof(g_cdc_can_device[i].usb_out_mempool))) {
-            printf("chry_ringbuffer_init success %d\r\n", i);
-        } else {
-            printf("chry_ringbuffer_init error %d\r\n", i);
-        }
-        line_coding.dwDTERate = 1000000;
-        line_coding.bDataBits = 8;
-        line_coding.bParityType = 0;
-        line_coding.bCharFormat = 0;
-        usbd_init_line_coding(i, &line_coding);
-    }
-
+    cdc_acm_can_init();
     usbd_initialize(busid, reg_base, usbd_event_handler);
 }
 
-void usbd_init_line_coding(uint8_t can_num, struct cdc_line_coding *line_coding)
-{
-    g_cdc_can_device[can_num].cdc_device.s_line_coding.dwDTERate = line_coding->dwDTERate;
-    g_cdc_can_device[can_num].cdc_device.s_line_coding.bDataBits = line_coding->bDataBits;
-    g_cdc_can_device[can_num].cdc_device.s_line_coding.bParityType = line_coding->bParityType;
-    g_cdc_can_device[can_num].cdc_device.s_line_coding.bCharFormat = line_coding->bCharFormat;
-}
 
 void usbd_cdc_acm_set_line_coding(uint8_t busid, uint8_t intf, struct cdc_line_coding *line_coding)
 {
     (void)busid;
     (void)intf;
-    for (uint8_t i = 0; i < MAX_CDC_COUNT; i++) {
-        if (intf == g_cdc_can_device[i].cdc_device.intf0.intf_num) {
-            g_cdc_can_device[i].cdc_device.is_open = true;
-            g_cdc_can_device[i].cdc_device.s_line_coding.dwDTERate = line_coding->dwDTERate;
-            g_cdc_can_device[i].cdc_device.s_line_coding.bDataBits = line_coding->bDataBits;
-            g_cdc_can_device[i].cdc_device.s_line_coding.bParityType = line_coding->bParityType;
-            g_cdc_can_device[i].cdc_device.s_line_coding.bCharFormat = line_coding->bCharFormat;
-            break;
-        }
+#ifdef CONFIG_SLCAN0
+    if (intf == slcan0.g_cdc_can_device.cdc_device.intf0.intf_num) {
+        slcan0.g_cdc_can_device.cdc_device.is_open = true;
+        slcan0.g_cdc_can_device.cdc_device.s_line_coding.dwDTERate = line_coding->dwDTERate;
+        slcan0.g_cdc_can_device.cdc_device.s_line_coding.bDataBits = line_coding->bDataBits;
+        slcan0.g_cdc_can_device.cdc_device.s_line_coding.bParityType = line_coding->bParityType;
+        slcan0.g_cdc_can_device.cdc_device.s_line_coding.bCharFormat = line_coding->bCharFormat;
     }
+#endif 
+#ifdef CONFIG_SLCAN1
+    if (intf == slcan1.g_cdc_can_device.cdc_device.intf0.intf_num) {
+        slcan1.g_cdc_can_device.cdc_device.is_open = true;
+        slcan1.g_cdc_can_device.cdc_device.s_line_coding.dwDTERate = line_coding->dwDTERate;
+        slcan1.g_cdc_can_device.cdc_device.s_line_coding.bDataBits = line_coding->bDataBits;
+        slcan1.g_cdc_can_device.cdc_device.s_line_coding.bParityType = line_coding->bParityType;
+        slcan1.g_cdc_can_device.cdc_device.s_line_coding.bCharFormat = line_coding->bCharFormat;
+    }
+#endif 
+#ifdef CONFIG_SLCAN2
+    if (intf == slcan2.g_cdc_can_device.cdc_device.intf0.intf_num) {
+        slcan2.g_cdc_can_device.cdc_device.is_open = true;
+        slcan2.g_cdc_can_device.cdc_device.s_line_coding.dwDTERate = line_coding->dwDTERate;
+        slcan2.g_cdc_can_device.cdc_device.s_line_coding.bDataBits = line_coding->bDataBits;
+        slcan2.g_cdc_can_device.cdc_device.s_line_coding.bParityType = line_coding->bParityType;
+        slcan2.g_cdc_can_device.cdc_device.s_line_coding.bCharFormat = line_coding->bCharFormat;
+    } 
+#endif 
+#ifdef CONFIG_SLCAN3
+    if (intf == slcan3.g_cdc_can_device.cdc_device.intf0.intf_num) {
+        slcan3.g_cdc_can_device.cdc_device.is_open = true;
+        slcan3.g_cdc_can_device.cdc_device.s_line_coding.dwDTERate = line_coding->dwDTERate;
+        slcan3.g_cdc_can_device.cdc_device.s_line_coding.bDataBits = line_coding->bDataBits;
+        slcan3.g_cdc_can_device.cdc_device.s_line_coding.bParityType = line_coding->bParityType;
+        slcan3.g_cdc_can_device.cdc_device.s_line_coding.bCharFormat = line_coding->bCharFormat;
+    } 
+#endif 
 }
 
 void usbd_cdc_acm_get_line_coding(uint8_t busid, uint8_t intf, struct cdc_line_coding *line_coding)
 {
     (void)busid;
-    for (uint8_t i = 0; i < MAX_CDC_COUNT; i++) {
-        if (intf == g_cdc_can_device[i].cdc_device.intf0.intf_num) {
-            g_cdc_can_device[i].cdc_device.is_open = true;
-            line_coding->dwDTERate = g_cdc_can_device[i].cdc_device.s_line_coding.dwDTERate;
-            line_coding->bDataBits = g_cdc_can_device[i].cdc_device.s_line_coding.bDataBits;
-            line_coding->bParityType = g_cdc_can_device[i].cdc_device.s_line_coding.bParityType;
-            line_coding->bCharFormat = g_cdc_can_device[i].cdc_device.s_line_coding.bCharFormat;
-            break;
-        }
+#ifdef CONFIG_SLCAN0
+    if (intf == slcan0.g_cdc_can_device.cdc_device.intf0.intf_num) {
+        slcan0.g_cdc_can_device.cdc_device.is_open = true;
+        line_coding->dwDTERate = slcan0.g_cdc_can_device.cdc_device.s_line_coding.dwDTERate;
+        line_coding->bDataBits = slcan0.g_cdc_can_device.cdc_device.s_line_coding.bDataBits;
+        line_coding->bParityType = slcan0.g_cdc_can_device.cdc_device.s_line_coding.bParityType;
+        line_coding->bCharFormat = slcan0.g_cdc_can_device.cdc_device.s_line_coding.bCharFormat;
     }
-}
-
-bool get_usb_out_char(uint8_t can_num, uint8_t *data)
-{
-    for (uint8_t i = 0; i < MAX_CDC_COUNT; i++) {
-        if (g_cdc_can_device[i].can_num == can_num) {
-            return chry_ringbuffer_read_byte(&g_cdc_can_device[i].usb_out_rb, data);
-        }
+#endif 
+#ifdef CONFIG_SLCAN1
+    if (intf == slcan1.g_cdc_can_device.cdc_device.intf0.intf_num) {
+        slcan1.g_cdc_can_device.cdc_device.is_open = true;
+        line_coding->dwDTERate = slcan1.g_cdc_can_device.cdc_device.s_line_coding.dwDTERate;
+        line_coding->bDataBits = slcan1.g_cdc_can_device.cdc_device.s_line_coding.bDataBits;
+        line_coding->bParityType = slcan1.g_cdc_can_device.cdc_device.s_line_coding.bParityType;
+        line_coding->bCharFormat = slcan1.g_cdc_can_device.cdc_device.s_line_coding.bCharFormat;
     }
-    return -1;
-}
-
-bool get_usb_out_is_empty(uint8_t can_num)
-{
-    for (uint8_t i = 0; i < MAX_CDC_COUNT; i++) {
-        if (g_cdc_can_device[i].can_num == can_num) {
-            return chry_ringbuffer_check_empty(&g_cdc_can_device[i].usb_out_rb);
-        }
+#endif 
+#ifdef CONFIG_SLCAN2
+    if (intf == slcan2.g_cdc_can_device.cdc_device.intf0.intf_num) {
+        slcan2.g_cdc_can_device.cdc_device.is_open = true;
+        line_coding->dwDTERate = slcan2.g_cdc_can_device.cdc_device.s_line_coding.dwDTERate;
+        line_coding->bDataBits = slcan2.g_cdc_can_device.cdc_device.s_line_coding.bDataBits;
+        line_coding->bParityType = slcan2.g_cdc_can_device.cdc_device.s_line_coding.bParityType;
+        line_coding->bCharFormat = slcan2.g_cdc_can_device.cdc_device.s_line_coding.bCharFormat;
     }
-    return true;
-}
-
-uint32_t write_usb_data(uint8_t can_num, uint8_t *data, uint32_t len)
-{
-    uint32_t res;
-    for (uint8_t i = 0; i < MAX_CDC_COUNT; i++) {
-        if (g_cdc_can_device[i].can_num == can_num) {
-            if (usbd_is_tx_busy(can_num) == false) {
-                usbd_set_tx_busy(can_num);
-                res = usbd_ep_start_write(USB_BUS_ID, g_cdc_can_device[i].cdc_device.cdc_in_ep.ep_addr, data, len);
-                if (res != 0) {
-                    return 0;
-                }
-            } else {
-                return 0;
-            }
-            return len;
-        }
+#endif 
+#ifdef CONFIG_SLCAN3
+    if (intf == slcan3.g_cdc_can_device.cdc_device.intf0.intf_num) {
+        slcan3.g_cdc_can_device.cdc_device.is_open = true;
+        line_coding->dwDTERate = slcan3.g_cdc_can_device.cdc_device.s_line_coding.dwDTERate;
+        line_coding->bDataBits = slcan3.g_cdc_can_device.cdc_device.s_line_coding.bDataBits;
+        line_coding->bParityType = slcan3.g_cdc_can_device.cdc_device.s_line_coding.bParityType;
+        line_coding->bCharFormat = slcan3.g_cdc_can_device.cdc_device.s_line_coding.bCharFormat;
     }
-    return 0;
+#endif
 }
 
 

@@ -21,6 +21,7 @@ doctrees
 doc/output/*
 
 segger_embedded_studio
+hpm5300evk_flash_xip_debug
 *.pyc
 sec_core_img.c
 *.o

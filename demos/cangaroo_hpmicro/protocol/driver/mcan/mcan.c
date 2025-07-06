@@ -7,11 +7,26 @@
 
 #include "mcan.h"
 #include "pinmux.h"
-
+#include "slcan.h"
 mcan_rx_message_t    g_mcan_rx_frame[CANFD_NUM][MCAN_RXBUF_SIZE_CAN_DEFAULT];
 mcan_tx_frame_t      g_mcan_tx_frame[CANFD_NUM];
 volatile uint8_t     g_mcan_rx_fifo_complete_flag[CANFD_NUM][MCAN_RXBUF_SIZE_CAN_DEFAULT];
-struct slcan_t slcan0, slcan1, slcan2, slcan3;
+
+#ifdef  CONFIG_SLCAN0
+USB_NOCACHE_RAM_SECTION USB_MEM_ALIGNX struct slcan_t slcan0;
+#endif
+
+#ifdef  CONFIG_SLCAN1
+USB_NOCACHE_RAM_SECTION USB_MEM_ALIGNX struct slcan_t slcan1;
+#endif
+
+#ifdef  CONFIG_SLCAN2
+USB_NOCACHE_RAM_SECTION USB_MEM_ALIGNX struct slcan_t slcan2;
+#endif
+
+#ifdef  CONFIG_SLCAN3
+USB_NOCACHE_RAM_SECTION USB_MEM_ALIGNX struct slcan_t slcan3;
+#endif
 
 void mcan_isr(struct slcan_t *slcan_port)
 {
@@ -44,29 +59,38 @@ void mcan_isr(struct slcan_t *slcan_port)
     mcan_clear_interrupt_flags(base, flags);
 }
 
+#ifdef  CONFIG_SLCAN0
 void mcan0_isr(void)
 {
     mcan_isr(&slcan0);
 }
 SDK_DECLARE_EXT_ISR_M(IRQn_MCAN0, mcan0_isr);
+#endif
 
+#ifdef  CONFIG_SLCAN1
 void mcan1_isr(void)
 {
     mcan_isr(&slcan1);
 }
 SDK_DECLARE_EXT_ISR_M(IRQn_MCAN1, mcan1_isr);
+#endif
 
+#ifdef  CONFIG_SLCAN2
 void mcan2_isr(void)
 {
     mcan_isr(&slcan2);
 }
 SDK_DECLARE_EXT_ISR_M(IRQn_MCAN2, mcan2_isr);
+#endif
 
+#ifdef  CONFIG_SLCAN3
 void mcan3_isr(void)
 {
     mcan_isr(&slcan3);
 }
 SDK_DECLARE_EXT_ISR_M(IRQn_MCAN3, mcan3_isr);
+#endif
+
 void mcan_channel_init(uint8_t can_num)
 {
     g_mcan_rx_fifo_complete_flag[can_num][0] = false;
@@ -75,28 +99,31 @@ void mcan_channel_init(uint8_t can_num)
 
 void mcan_pinmux_init(uint8_t can_num)
 {
-    if (CANFD_NUM > 4) {
-        return;
-    }
     switch (can_num) {
+#ifdef  CONFIG_SLCAN0
     case 0:
         HPM_IOC->PAD[IOC_PAD_PB00].FUNC_CTL = IOC_PB00_FUNC_CTL_MCAN0_TXD;
         HPM_IOC->PAD[IOC_PAD_PB01].FUNC_CTL = IOC_PB01_FUNC_CTL_MCAN0_RXD; 
         break;
-
+#endif
+#ifdef  CONFIG_SLCAN1
     case 1:
         HPM_IOC->PAD[IOC_PAD_PB05].FUNC_CTL = IOC_PB05_FUNC_CTL_MCAN1_TXD;
         HPM_IOC->PAD[IOC_PAD_PB04].FUNC_CTL = IOC_PB04_FUNC_CTL_MCAN1_RXD; 
         break;
-
+#endif
+#ifdef  CONFIG_SLCAN2
     case 2:
         HPM_IOC->PAD[IOC_PAD_PB08].FUNC_CTL = IOC_PB08_FUNC_CTL_MCAN2_TXD;
         HPM_IOC->PAD[IOC_PAD_PB09].FUNC_CTL = IOC_PB09_FUNC_CTL_MCAN2_RXD; 
         break;
-
+#endif
+#ifdef  CONFIG_SLCAN3
     case 3:
         HPM_IOC->PAD[IOC_PAD_PA15].FUNC_CTL = IOC_PA15_FUNC_CTL_MCAN3_TXD;
         HPM_IOC->PAD[IOC_PAD_PA14].FUNC_CTL = IOC_PA14_FUNC_CTL_MCAN3_RXD;
         break;
+#endif
     }
+
 }
