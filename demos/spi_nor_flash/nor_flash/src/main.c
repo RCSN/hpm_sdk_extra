@@ -11,7 +11,7 @@
 #include "hpm_mchtmr_drv.h"
 #include "hpm_serial_nor.h"
 #include "hpm_serial_nor_host_port.h"
-#if (USE_SERIAL_NOR_DMA_MGR == 1)
+#if (SERIAL_NOR_USE_DMA_MGR == 1)
 #include "hpm_dma_mgr.h"
 #endif
 
@@ -33,7 +33,7 @@ int main(void)
     double write_speed, read_speed;
 
     board_init();
-#if (USE_SERIAL_NOR_DMA_MGR == 1)
+#if (SERIAL_NOR_USE_DMA_MGR == 1)
     dma_mgr_init();
 #endif
     serial_nor_get_board_host(&nor_flash_dev.host);

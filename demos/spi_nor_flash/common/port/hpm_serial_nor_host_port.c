@@ -41,7 +41,7 @@ ATTR_WEAK hpm_stat_t serial_nor_get_board_host(hpm_serial_nor_host_t *host)
     host->host_param.param.clock_name = PORT_SPI_CLK_NAME;
     host->host_param.param.pin_or_cs_index = BOARD_SPI_CS_PIN;
     host->host_param.param.host_base = PORT_SPI_BASE;
-#if (USE_SERIAL_NOR_DMA_MGR == 0)
+#if (SERIAL_NOR_USE_DMA_MGR == 0)
     host->host_param.param.dma_control.dma_base = PORT_SPI_NOR_DMA;
     host->host_param.param.dma_control.dmamux_base    = PORT_SPI_NOR_DMAMUX;
     host->host_param.param.dma_control.rx_dma_ch  = PORT_SPI_RX_DMA_CH;
