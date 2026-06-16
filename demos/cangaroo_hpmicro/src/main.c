@@ -27,7 +27,10 @@ int main(void)
     board_init_usb(HPM_USB0);
     intc_set_irq_priority(CONFIG_HPM_USBD_IRQn, 3);
     cdc_acm_init(USB_BUS_ID, CONFIG_HPM_USBD_BASE);
-    slcan_init();
+    slcan_port0_init(&slcan0);
+    slcan_port1_init(&slcan1);
+    slcan_port2_init(&slcan2);
+    slcan_port3_init(&slcan3);
     for (int i = 0; i < WS2812_LED_NUM; i++) {
         WS2812_SetPixel(i, 0x0B, 0, 0);
     }
